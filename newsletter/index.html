@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+    <title>Document</title>
+  </head>
+  <body>
+    <main class="form-signin">
+      <form action="/" method="post">
+        <img
+          class="mb-4"
+          src="./assets/logo.png"
+          alt="Logo"
+          width="50"
+          height="50"
+        />
+        <h1 class="h3 mb-3 fw-normal">Subscribe NewsLetter</h1>
+
+        <div class="form-floating">
+          <input
+            type="text"
+            name="firstName"
+            class="form-control top"
+            id="firstName"
+            placeholder="First Name"
+          />
+          <label for="firstName">First Name</label>
+        </div>
+        <div class="form-floating">
+          <input
+            type="text"
+            name="lastName"
+            class="form-control middle"
+            id="lastName"
+            placeholder="Last Name"
+          />
+          <label for="lastName">Last Name</label>
+        </div>
+        <div class="form-floating">
+          <input
+            type="email"
+            name="email"
+            class="form-control bottom"
+            id="email"
+            placeholder="Email"
+          />
+          <label for="email">Email</label>
+        </div>
+        <button class="w-100 btn btn-lg btn-primary" type="submit">
+          Subscribe
+        </button>
+        <p class="mt-5 mb-3 text-muted">© 2022</p>
+      </form>
+    </main>
+  </body>
+</html>
