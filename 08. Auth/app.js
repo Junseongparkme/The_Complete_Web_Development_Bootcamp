@@ -7,9 +7,13 @@ const session = require('express-session');
 const passport = require('passport');
 const passportLocalMongoose = require('passport-local-mongoose');
 
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const findOrCreate = require('mongoose-findorcreate');
+
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static('public'));
 
 // 1. 세션 사용하기
 app.use(
@@ -37,18 +41,55 @@ async function main() {
   const userSchema = new mongoose.Schema({
     email: String,
     password: String,
+    googleId: String,
+    secret: String,
   });
 
   // 4. 스키마에 플러그인 추가하기
   userSchema.plugin(passportLocalMongoose);
+  userSchema.plugin(findOrCreate);
 
   const User = mongoose.model('User', userSchema);
 
   // 5. 작업 코드 생성
 
   passport.use(User.createStrategy());
-  passport.serializeUser(User.serializeUser());
-  passport.deserializeUser(User.deserializeUser());
+
+  // passport.serializeUser(User.serializeUser());
+  // passport.deserializeUser(User.deserializeUser());
+
+  // Google 로그인 세션을 MongoDB에 추가하기 위해 직렬화, 역직렬화 코드를 변경
+  passport.serializeUser(function (user, cb) {
+    process.nextTick(function () {
+      return cb(null, {
+        id: user.id,
+        username: user.username,
+        picture: user.picture,
+      });
+    });
+  });
+
+  passport.deserializeUser(function (user, cb) {
+    process.nextTick(function () {
+      return cb(null, user);
+    });
+  });
+
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.CLIENT_ID,
+        clientSecret: process.env.CLIENT_SECRET,
+        callbackURL: 'http://localhost:3000/auth/google/secrets',
+        userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo',
+      },
+      function (accessToken, refreshToken, profile, cb) {
+        User.findOrCreate({ googleId: profile.id }, function (err, user) {
+          return cb(err, user);
+        });
+      }
+    )
+  );
 
   app.get('/', function (req, res) {
     res.render('home');
@@ -73,13 +114,29 @@ async function main() {
     });
   });
 
-  // 인증된 사용자만 접근 가능한 페이지
-  app.get('/secrets', function (req, res) {
-    if (req.isAuthenticated()) {
-      res.render('secrets');
-    } else {
-      res.redirect('/login');
+  app.get(
+    '/auth/google',
+    passport.authenticate('google', { scope: ['profile'] })
+  );
+
+  app.get(
+    '/auth/google/secrets',
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    function (req, res) {
+      res.redirect('/secrets');
     }
+  );
+
+  app.get('/secrets', function (req, res) {
+    User.find({ secret: { $ne: null } }, function (err, foundUsers) {
+      if (err) {
+        console.log(err);
+      } else {
+        if (foundUsers) {
+          res.render('secrets', { usersWithSecrets: foundUsers });
+        }
+      }
+    });
   });
 
   app.get('/login', function (req, res) {
@@ -109,6 +166,30 @@ async function main() {
   app.get('/logout', function (req, res) {
     req.logout((err) => console.log(err));
     res.redirect('/');
+  });
+
+  app.get('/submit', function (req, res) {
+    if (req.isAuthenticated()) {
+      res.render('submit');
+    } else {
+      res.redirect('/login');
+    }
+  });
+
+  app.post('/submit', function (req, res) {
+    const submittedSecret = req.body.secret;
+
+    User.findById(req.user.id, function (err, foundUser) {
+      if (err) console.log(err);
+      else {
+        if (foundUser) {
+          foundUser.secret = submittedSecret;
+          foundUser.save(function () {
+            res.redirect('/secrets');
+          });
+        }
+      }
+    });
   });
 
   app.listen(
